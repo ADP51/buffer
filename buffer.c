@@ -36,6 +36,7 @@ Buffer* b_allocate(short init_capacity, char inc_factor, char o_mode) {
 	}
 
 	Buffer* init = NULL;
+	unsigned char cast_inc_factor = (unsigned char)inc_factor; /* Cast inc factor once */
 
 	if ((init = (Buffer*)calloc(1, sizeof(Buffer))) == NULL) {
 		return NULL;
@@ -49,20 +50,19 @@ Buffer* b_allocate(short init_capacity, char inc_factor, char o_mode) {
 		if (o_mode == 'f') {
 			init->inc_factor = 0;
 			init->mode = O_MODE_F;
-		}
-		else if (o_mode == 'a' || o_mode == 'm') {
+		}	
+		else if (o_mode == 'a') {
+			init->mode = O_MODE_A;
 			init->inc_factor = (unsigned char)DEFAULT_INC_FACTOR;
-			if (o_mode == 'a') {
-				init->mode = O_MODE_A;
-			}
-			else if (o_mode == 'm') {
-				init->mode = O_MODE_M;
-			}
-			else {
-				b_free(init); /* If the o_mode is not valid free the initialized memory and return null*/
-				init = NULL;
-				return NULL;
-			}
+		}
+		else if (o_mode == 'm') {
+			init->mode = O_MODE_M;
+			init->inc_factor = (unsigned char)DEFAULT_INC_FACTOR;
+		}
+		else {
+			b_free(init); /* If the o_mode is not valid free the initialized memory and return null*/
+			init = NULL;
+			return NULL;
 		}
 	}
 	else {	/*If init_capacity is not 0*/
@@ -70,17 +70,21 @@ Buffer* b_allocate(short init_capacity, char inc_factor, char o_mode) {
 			return NULL;
 		}
 
-		if ((o_mode == 'f' || (unsigned char)inc_factor == 0) || ((unsigned char)inc_factor == 0 && (unsigned char)inc_factor != 0)) {
+		if (o_mode == 'f') {
 			init->mode = O_MODE_F;
 			init->inc_factor = 0;
 		}
-		else if (o_mode == 'a' && 1 <= (unsigned char)inc_factor <= 255) {
-			init->mode = O_MODE_A;
-			init->inc_factor = (unsigned char)inc_factor;
+		else if (inc_factor == 0 && init_capacity != 0) {
+			init->mode = 0;
+			init->inc_factor = 0;
 		}
-		else if (o_mode == 'm' && 1 <= (unsigned char)inc_factor <= 100) {
+		else if (o_mode == 'a' && (cast_inc_factor >= 1 && cast_inc_factor <= 255)) {
+			init->mode = O_MODE_A;
+			init->inc_factor = cast_inc_factor;
+		}
+		else if (o_mode == 'm' && cast_inc_factor >=1 && cast_inc_factor <= 100) {
 			init->mode = (signed char)O_MODE_M;
-			init->inc_factor = (unsigned char)inc_factor;
+			init->inc_factor = cast_inc_factor;
 		}
 		else {
 			b_free(init);
@@ -91,7 +95,7 @@ Buffer* b_allocate(short init_capacity, char inc_factor, char o_mode) {
 	}
 
 	init->flags = DEFAULT_FLAGS;
-	init->getc_offset = 0; /* This is not in the spec sheet but I have to initialize this to work */
+	
 	return init;
 }
 
@@ -114,7 +118,7 @@ Buffer* b_addc(pBuffer const pBD, char symbol)
 		return NULL;
 	}
 
-	short new_cap = 0; /*local variable to assign new memory for Buffer */
+	short new_cap; /*local variable to assign new memory for Buffer */
 	char* new_Array = NULL; /* local variable for resizing Buffer */
 	short available_space; /* new available space */
 	short new_inc; /* The new inc_factor */
@@ -134,8 +138,8 @@ Buffer* b_addc(pBuffer const pBD, char symbol)
 	}
 
 	if (pBD->mode == 1) {
-		new_cap = pBD->capacity + (short)pBD->inc_factor; /* Creates new capacity by adding inc_factor to current cap */
-		if (new_cap > 0 && new_cap > (SHRT_MAX - 1)) {
+		new_cap = pBD->capacity + (unsigned char)pBD->inc_factor; /* Creates new capacity by adding inc_factor to current cap */
+		if (new_cap < 0 && new_cap > (SHRT_MAX - 1)) {
 			new_cap = SHRT_MAX - 1; /* If new_cap is positive but exceeds the max allowed value reassing to the max value */
 		}
 
@@ -146,11 +150,16 @@ Buffer* b_addc(pBuffer const pBD, char symbol)
 
 	if (pBD->mode == -1) {
 		available_space = (SHRT_MAX - 1) - pBD->capacity;
-		new_inc = available_space * (unsigned char)pBD->inc_factor / 100;
+		new_inc = (available_space * (short)(unsigned char)pBD->inc_factor) / 100;
 		new_cap = pBD->capacity + new_inc;
 
-		if (0 > new_cap || new_cap > (SHRT_MAX - 1)) {
-			new_cap = SHRT_MAX - 1; /* If the new_cap is larger than the allowed max but the current cap is not full assign max cap */
+		if (new_inc == 0) {
+			if(new_cap < SHRT_MAX - 1) {
+				new_cap = SHRT_MAX - 1; /* If the new_cap is larger than the allowed max but the current cap is not full assign max cap */
+			}
+			else {
+				return NULL;
+			}
 		}
 	}
 
@@ -287,7 +296,7 @@ short b_mark(pBuffer const pBD, short mark) {
 		return RT_FAIL_1;
 	}
 
-	if (0 <= mark <= pBD->addc_offset)
+	if (0 <= mark || mark <= pBD->addc_offset)
 	{
 		pBD->markc_offset = mark;
 		return pBD->markc_offset;
@@ -312,7 +321,7 @@ int b_mode(Buffer* const pBD) {
 		return RT_FAIL_1;
 	}
 
-	return (int)pBD->mode;
+	return pBD->mode;
 }
 
 /**********************************************************************************************************
@@ -489,7 +498,7 @@ Buffer* b_compact(Buffer* const pBD, char symbol) {
 	short new_cap; /* The new capacity */
 
 	new_cap = pBD->addc_offset + 1;
-	if (new_cap < 0 || new_cap == SHRT_MAX) {
+	if (new_cap < 0) { /*Compact can reach current max plus 1 (SHRT_MAX) so anything above that would cause overflow*/
 		return NULL;
 	}
 
