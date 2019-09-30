@@ -68,7 +68,7 @@ int main(int argc, char** argv) {
 		exit(1);
 	}
 	/*create the input buffer */
-	ptr_Buffer = b_allocate((SHRT_MAX - 10), 9, *argv[2]);
+	ptr_Buffer = b_allocate(200, 128, *argv[2]);
 	if (ptr_Buffer == NULL) {
 		err_printf("%s%s%s", argv[0], ": ", "Cannot allocate buffer.");
 		exit(1);

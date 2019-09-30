@@ -1,6 +1,35 @@
+/**********************************************************************************************************
+* File Name:		buffer.c
+* Compiler:			MS Visual Studio 2013
+* Author:			Andrew Palmer
+* Course:			CST 8152 - Compilers, Lab Section: 012
+* Assignment:		1
+* Date:				29/9/2019
+* Professor:		Sv.Ranev
+* Purpose:			Contains all buffer functions.
+* Function list:	b_allocate(), b_addc(), b_clear(), b_free(), b_clear(),b_isFull(),
+					b_limit(), b_capacity(), b_mark(), b_mode(), b_incfactor(), b_load(),
+					b_isempty(), b_getc(), b_eob(), b_print(), b_compact(), b_rflag(),
+					b_retract(), b_reset(), b_getcoffset(), b_rewind(), b_location()
+**********************************************************************************************************/
+
 #include <string.h>
 #include "buffer.h"
 
+/**********************************************************************************************************
+* Purpose:			Creates the buffer structure and allocates memory.
+* Author:			Andrew Palmer
+* History/Versions:	29/9/2019
+* Called Function:	malloc(), b_free(), calloc()
+* Parameters:		init_capacity	-short	Has to be between 0 and SHRTMAX-1
+*					inc_factor		-char	Must be positive. Range
+*											between 0 to 255 inclusive unsigned cast
+*					o_mode			-char	must be a letter in f,a,m
+* Return Value:		init			*Buffer	Points to valid buffer structure
+*
+* Algorithm:		Initializes the buffer structure and all of the necessary properties, based on 
+					arguments passed to the function.
+**********************************************************************************************************/
 Buffer* b_allocate(short init_capacity, char inc_factor, char o_mode) {
 	if (init_capacity < 0 || init_capacity > SHRT_MAX - 1) {
 		return NULL;
@@ -11,8 +40,8 @@ Buffer* b_allocate(short init_capacity, char inc_factor, char o_mode) {
 	if ((init = (Buffer*)calloc(1, sizeof(Buffer))) == NULL) {
 		return NULL;
 	}
-
-	if (init_capacity == 0) {
+	
+	if (init_capacity == 0) { /*If the init_capacity parameter is 0*/
 		if ((init->cb_head = (char*)malloc(sizeof(char) * DEFAULT_INIT_CAPACITY)) == NULL) {
 			return NULL;
 		}
@@ -30,13 +59,13 @@ Buffer* b_allocate(short init_capacity, char inc_factor, char o_mode) {
 				init->mode = O_MODE_M;
 			}
 			else {
-				b_free(init);
+				b_free(init); /* If the o_mode is not valid free the initialized memory and return null*/
 				init = NULL;
 				return NULL;
 			}
 		}
 	}
-	else {
+	else {	/*If init_capacity is not 0*/
 		if ((init->cb_head = (char*)malloc(sizeof(char) * init_capacity)) == NULL) {
 			return NULL;
 		}
@@ -61,11 +90,24 @@ Buffer* b_allocate(short init_capacity, char inc_factor, char o_mode) {
 		init->capacity = init_capacity;
 	}
 
-	init->flags = 0xFFFC;
-	init->getc_offset = 0;
+	init->flags = DEFAULT_FLAGS;
+	init->getc_offset = 0; /* This is not in the spec sheet but I have to initialize this to work */
 	return init;
 }
 
+/**********************************************************************************************************
+* Purpose:			Adds a character to the buffer
+* Author:			Andrew Palmer
+* History/Versions:	29/9/2019
+* Called Function:	
+* Parameters:		pBD				-A pointer to an existing bufferrr
+					symbol			-The given chear to add
+* Return Value:		pBD				Pointer to the updated buffer
+*
+* Algorithm:		Will check to see if the buffer is full, if not it will add the char at the apropriate
+					position. If the buffer is full, will attempt to reallocate memory for the buffer to 
+					allow for more characters up to the max.
+**********************************************************************************************************/
 Buffer* b_addc(pBuffer const pBD, char symbol)
 {
 	if (pBD == NULL) {
@@ -127,6 +169,16 @@ Buffer* b_addc(pBuffer const pBD, char symbol)
 	return pBD;
 }
 
+/**********************************************************************************************************
+* Purpose:			Clears the buffer
+* Author:			Andrew Palmer
+* History/Versions:	29/9/2019
+* Called Function:
+* Parameters:		pBD				-A pointer to an existing buffer
+* Return Value:		int				0
+*
+* Algorithm:		Reset all of the flags and set all of the offsets, as well as the mode to 0
+**********************************************************************************************************/
 int b_clear(Buffer* const pBD)
 {
 	if (pBD == NULL) {
@@ -143,6 +195,16 @@ int b_clear(Buffer* const pBD)
 	return 0;
 }
 
+/**********************************************************************************************************
+* Purpose:			Frees the memory allocated to the buffer
+* Author:			Andrew Palmer
+* History/Versions:	29/9/2019
+* Called Function:
+* Parameters:		pBD				-A pointer to an existing buffer
+* Return Value:		
+*
+* Algorithm:		
+**********************************************************************************************************/
 void b_free(Buffer* const pBD) {
 	if (pBD != NULL) {
 		free(pBD->cb_head);
@@ -150,6 +212,16 @@ void b_free(Buffer* const pBD) {
 	}
 }
 
+/**********************************************************************************************************
+* Purpose:			Check if buffer is at capacity
+* Author:			Andrew Palmer
+* History/Versions:	29/9/2019
+* Called Function:
+* Parameters:		pBD				-A pointer to an existing buffer
+* Return Value:		int				0
+*
+* Algorithm:		
+**********************************************************************************************************/
 int b_isFull(Buffer* const pBD) {
 	if (pBD == NULL) {
 		return RT_FAIL_1;
@@ -162,6 +234,16 @@ int b_isFull(Buffer* const pBD) {
 	return 0;
 }
 
+/**********************************************************************************************************
+* Purpose:			Gets the current size of the buffer
+* Author:			Andrew Palmer
+* History/Versions:	29/9/2019
+* Called Function:
+* Parameters:		pBD				-A pointer to an existing buffer
+* Return Value:		short			the value of addc_offset
+*
+* Algorithm:		
+**********************************************************************************************************/
 short b_limit(Buffer* const pBD) {
 	if (pBD == NULL)
 	{
@@ -171,6 +253,16 @@ short b_limit(Buffer* const pBD) {
 	return pBD->addc_offset;
 }
 
+/**********************************************************************************************************
+* Purpose:			Gets the current capcity of the buffer
+* Author:			Andrew Palmer
+* History/Versions:	29/9/2019
+* Called Function:
+* Parameters:		pBD				-A pointer to an existing buffer
+* Return Value:		short			the capacity of the buffer
+*
+* Algorithm:		
+**********************************************************************************************************/
 short b_capacity(Buffer* pBD) {
 	if (pBD == NULL) {
 		return RT_FAIL_1;
@@ -178,6 +270,18 @@ short b_capacity(Buffer* pBD) {
 	return pBD->capacity;
 }
 
+/**********************************************************************************************************
+* Purpose:			Sets the mark of a buffer
+* Author:			Andrew Palmer
+* History/Versions:	29/9/2019
+* Called Function:
+* Parameters:		pBD				-A pointer to an existing buffer
+					short			the new value for markc_offset
+* Return Value:		short			the current value of markc_offset
+*
+* Algorithm:		Checks mark parameter, if parameter is acceptable then set makc_offset to mark and return
+					otherwise return -1.
+**********************************************************************************************************/
 short b_mark(pBuffer const pBD, short mark) {
 	if (pBD == NULL) {
 		return RT_FAIL_1;
@@ -193,15 +297,34 @@ short b_mark(pBuffer const pBD, short mark) {
 	}
 }
 
-/*This method doesn't specify -1 to return just says to notify calling function*/
+/**********************************************************************************************************
+* Purpose:			Gets the bufferr mode
+* Author:			Andrew Palmer
+* History/Versions:	29/9/2019
+* Called Function:
+* Parameters:		pBD				-A pointer to an existing buffer
+* Return Value:		int				the integer value of mode
+*
+* Algorithm:		
+**********************************************************************************************************/
 int b_mode(Buffer* const pBD) {
 	if (pBD == NULL) {
 		return RT_FAIL_1;
 	}
 
-	return pBD->mode;
+	return (int)pBD->mode;
 }
 
+/**********************************************************************************************************
+* Purpose:			Gets the inc_factor
+* Author:			Andrew Palmer
+* History/Versions:	29/9/2019
+* Called Function:
+* Parameters:		pBD				-A pointer to an existing buffer
+* Return Value:		size_t			size of the inc_factor
+*
+* Algorithm:		
+**********************************************************************************************************/
 size_t b_incfactor(Buffer* const pBD) {
 	if (pBD == NULL) {
 		return 0x100;
@@ -210,6 +333,19 @@ size_t b_incfactor(Buffer* const pBD) {
 	return (unsigned char)pBD->inc_factor;
 }
 
+/**********************************************************************************************************
+* Purpose:			Gets the content of the given file pointer and loads it into the buffer
+* Author:			Andrew Palmer
+* History/Versions:	29/9/2019
+* Called Function:
+* Parameters:		fi				-A pointer to a given file
+					pBD				-A pointer to an existing buffer
+* Return Value:		int				The number of characterrs loaded 
+*
+* Algorithm:		Will loop through the file and get one character at a time until end of file is detected.
+					b_addc() will be called with each character in order to add to the buffer. Will return
+					LOAD_FAIL if character is unable tttto be added.
+**********************************************************************************************************/
 int b_load(FILE* const fi, Buffer* const pBD) {
 	if (pBD == NULL || fi == NULL) {
 		return RT_FAIL_1;
@@ -231,6 +367,16 @@ int b_load(FILE* const fi, Buffer* const pBD) {
 	return counter;
 }
 
+/**********************************************************************************************************
+* Purpose:			Checks if buffer is empty
+* Author:			Andrew Palmer
+* History/Versions:	29/9/2019
+* Called Function:
+* Parameters:		pBD				-A pointer to an existing buffer
+* Return Value:		int				True/False
+*
+* Algorithm:		
+**********************************************************************************************************/
 int b_isempty(Buffer* const pBD)
 {
 	if (pBD == NULL) {
@@ -245,6 +391,18 @@ int b_isempty(Buffer* const pBD)
 
 }
 
+/**********************************************************************************************************
+* Purpose:			Gets the char at the current getc_offset 
+* Author:			Andrew Palmer
+* History/Versions:	29/9/2019
+* Called Function:
+* Parameters:		pBD				-A pointer to an existing buffer
+* Return Value:		char			the char at getc_offset
+*
+* Algorithm:		Check if the getc_offset has reached the end of the buffer, if it has it will set the 
+					EOB to 1 and return 0. Otherwise it will reset EOB to 0 and return the char, getc_offset 
+					is incremented.
+**********************************************************************************************************/
 char b_getc(Buffer* const pBD)
 {
 	if (pBD == NULL) {
@@ -262,6 +420,16 @@ char b_getc(Buffer* const pBD)
 	return temp;
 }
 
+/**********************************************************************************************************
+* Purpose:			Gets the EOB flag
+* Author:			Andrew Palmer
+* History/Versions:	29/9/2019
+* Called Function:
+* Parameters:		pBD				-A pointer to an existing buffer
+* Return Value:		int				the EOB flag
+*
+* Algorithm:		
+**********************************************************************************************************/
 int b_eob(Buffer* const pBD)
 {
 	if (pBD == NULL) {
@@ -271,6 +439,17 @@ int b_eob(Buffer* const pBD)
 	return (pBD->flags >> 1) & 1; /* Will return the EOB bit */
 }
 
+/**********************************************************************************************************
+* Purpose:			Prints the buffer
+* Author:			Andrew Palmer
+* History/Versions:	29/9/2019
+* Called Function:
+* Parameters:		pBD				-A pointer to an existing buffer
+					nl				new line flag
+* Return Value:		int				how many characters were printed
+*
+* Algorithm:		Will loop though the buffer and print the char returned by b_getc()
+**********************************************************************************************************/
 int b_print(Buffer* const pBD, char nl) {
 	if (pBD == NULL) {
 		return RT_FAIL_1;
@@ -292,6 +471,18 @@ int b_print(Buffer* const pBD, char nl) {
 	return counter;
 }
 
+/**********************************************************************************************************
+* Purpose:			Clears the buffer
+* Author:			Andrew Palmer
+* History/Versions:	29/9/2019
+* Called Function:
+* Parameters:		pBD				-A pointer to an existing buffer
+					symbol			-Char to at at end
+* Return Value:		pBD				Pointer to the updated buffer
+*
+* Algorithm:		Will try to resize the the buffer based on the current size of tthe buffer + 1 and adds symbol. 
+					Sets the r_flag to 1 if memory location has changed during realloc
+**********************************************************************************************************/
 Buffer* b_compact(Buffer* const pBD, char symbol) {
 
 	char* temp_array; /* temp array for realloc */
@@ -308,23 +499,44 @@ Buffer* b_compact(Buffer* const pBD, char symbol) {
 
 	pBD->capacity = new_cap;
 	if (pBD->cb_head != temp_array) {
-		pBD->flags |= SET_R_FLAG;
+		pBD->flags |= SET_R_FLAG; /* Set r_flag to 1 */
 	}
 	pBD->cb_head = temp_array;
+	temp_array = NULL;/* Remove Dangling pointer */
 	pBD->cb_head[pBD->addc_offset] = symbol;
 	pBD->addc_offset++;
 
 	return pBD;
 }
 
+/**********************************************************************************************************
+* Purpose:			Gets the r_flag
+* Author:			Andrew Palmer
+* History/Versions:	29/9/2019
+* Called Function:
+* Parameters:		pBD				-A pointer to an existing buffer
+* Return Value:		char			r_flag value
+*
+* Algorithm:		
+**********************************************************************************************************/
 char b_rflag(Buffer* const pBD) {
 	if (pBD == NULL) {
 		return RT_FAIL_1;
 	}
 
-	return pBD->flags & 1; /* Will return the EOB bit */
+	return (char)pBD->flags & 1; /* Will return the EOB bit */
 }
 
+/**********************************************************************************************************
+* Purpose:			Decrements the getc_offset by one
+* Author:			Andrew Palmer
+* History/Versions:	29/9/2019
+* Called Function:
+* Parameters:		pBD				-A pointer to an existing buffer
+* Return Value:		short			new value of getc_offset
+*
+* Algorithm:		
+**********************************************************************************************************/
 short b_retract(Buffer* const pBD) {
 	if (pBD == NULL) {
 		return RT_FAIL_1;
@@ -334,6 +546,16 @@ short b_retract(Buffer* const pBD) {
 	return pBD->getc_offset;
 }
 
+/**********************************************************************************************************
+* Purpose:			Reset the buffer to markc_offset
+* Author:			Andrew Palmer
+* History/Versions:	29/9/2019
+* Called Function:
+* Parameters:		pBD				-A pointer to an existing buffer
+* Return Value:		short			the adjusted value of getc_offset
+*
+* Algorithm:		
+**********************************************************************************************************/
 short b_reset(Buffer* const pBD) {
 	if (pBD == NULL) {
 		return RT_FAIL_1;
@@ -343,6 +565,16 @@ short b_reset(Buffer* const pBD) {
 	return pBD->getc_offset;
 }
 
+/**********************************************************************************************************
+* Purpose:			Gets the getc_offset
+* Author:			Andrew Palmer
+* History/Versions:	29/9/2019
+* Called Function:
+* Parameters:		pBD				-A pointer to an existing buffer
+* Return Value:		short			getc_offset
+*
+* Algorithm:		
+**********************************************************************************************************/
 short b_getcoffset(Buffer* const pBD) {
 	if (pBD == NULL) {
 		return RT_FAIL_1;
@@ -350,6 +582,16 @@ short b_getcoffset(Buffer* const pBD) {
 	return pBD->getc_offset;
 }
 
+/**********************************************************************************************************
+* Purpose:			Rewinds the buffer to be prinnted again
+* Author:			Andrew Palmer
+* History/Versions:	29/9/2019
+* Called Function:
+* Parameters:		pBD				-A pointer to an existing buffer
+* Return Value:		int				0
+*
+* Algorithm:		Sets the getc_offset and markset_offset to 0;
+**********************************************************************************************************/
 int b_rewind(Buffer* const pBD) {
 	if (pBD == NULL) {
 		return RT_FAIL_1;
@@ -360,6 +602,16 @@ int b_rewind(Buffer* const pBD) {
 	return 0;
 }
 
+/**********************************************************************************************************
+* Purpose:			Gets a pointer to a char at markc_offset
+* Author:			Andrew Palmer
+* History/Versions:	29/9/2019
+* Called Function:
+* Parameters:		pBD				-A pointer to an existing buffer
+* Return Value:		char*			pointer to char
+*
+* Algorithm:		
+**********************************************************************************************************/
 char* b_location(Buffer* const pBD) {
 	char* temp; /* The pointer to cb_head at markc_offset */
 	temp = &*(pBD->cb_head + pBD->markc_offset);
