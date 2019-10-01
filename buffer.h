@@ -43,6 +43,9 @@
 #define O_MODE_A 1
 #define O_MODE_F 0
 #define O_MODE_M (-1)
+#define TRUE 1
+#define FALSE 0
+#define INCFACTOR_FAIL 0x100
 
 /* user data type declarations */
 typedef struct BufferDescriptor {

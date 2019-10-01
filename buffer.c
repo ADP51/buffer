@@ -31,22 +31,22 @@
 					arguments passed to the function.
 **********************************************************************************************************/
 Buffer* b_allocate(short init_capacity, char inc_factor, char o_mode) {
-	if (init_capacity < 0 || init_capacity > SHRT_MAX - 1) {
+	if (init_capacity < 0 || init_capacity > SHRT_MAX - 1) { /*Check init cap range*/
 		return NULL;
 	}
 
 	Buffer* init = NULL;
 	unsigned char cast_inc_factor = (unsigned char)inc_factor; /* Cast inc factor once */
 
-	if ((init = (Buffer*)calloc(1, sizeof(Buffer))) == NULL) {
+	if ((init = (Buffer*)calloc(1, sizeof(Buffer))) == NULL) {/*Initialize Buffer struct memory */
 		return NULL;
 	}
 	
 	if (init_capacity == 0) { /*If the init_capacity parameter is 0*/
-		if ((init->cb_head = (char*)malloc(sizeof(char) * DEFAULT_INIT_CAPACITY)) == NULL) {
+		if ((init->cb_head = (char*)malloc(sizeof(char) * DEFAULT_INIT_CAPACITY)) == NULL) {/* initialize memory for buffer */
 			return NULL;
 		}
-		init->capacity = DEFAULT_INIT_CAPACITY;
+		init->capacity = DEFAULT_INIT_CAPACITY; 
 		if (o_mode == 'f') {
 			init->inc_factor = 0;
 			init->mode = O_MODE_F;
@@ -94,7 +94,7 @@ Buffer* b_allocate(short init_capacity, char inc_factor, char o_mode) {
 		init->capacity = init_capacity;
 	}
 
-	init->flags = DEFAULT_FLAGS;
+	init->flags = DEFAULT_FLAGS; /*Set the default flags*/
 	
 	return init;
 }
@@ -103,7 +103,7 @@ Buffer* b_allocate(short init_capacity, char inc_factor, char o_mode) {
 * Purpose:			Adds a character to the buffer
 * Author:			Andrew Palmer
 * History/Versions:	29/9/2019
-* Called Function:	
+* Called Function:	isFull(), realloc()
 * Parameters:		pBD				-A pointer to an existing bufferrr
 					symbol			-The given chear to add
 * Return Value:		pBD				Pointer to the updated buffer
@@ -128,7 +128,7 @@ Buffer* b_addc(pBuffer const pBD, char symbol)
 	}
 
 	if (b_isFull(pBD) == 0) { /*If buffer is not full*/
-		*(pBD->cb_head + pBD->addc_offset) = symbol; /*Add sybol to buffer and increment addc_offset*/
+		*(pBD->cb_head + pBD->addc_offset) = symbol; /*Add symbol to buffer and increment addc_offset*/
 		pBD->addc_offset++;
 		return pBD;
 	}
@@ -139,7 +139,7 @@ Buffer* b_addc(pBuffer const pBD, char symbol)
 
 	if (pBD->mode == 1) {
 		new_cap = pBD->capacity + (unsigned char)pBD->inc_factor; /* Creates new capacity by adding inc_factor to current cap */
-		if (new_cap < 0 && new_cap > (SHRT_MAX - 1)) {
+		if (new_cap < 0 || new_cap > (SHRT_MAX - 1)) {
 			new_cap = SHRT_MAX - 1; /* If new_cap is positive but exceeds the max allowed value reassing to the max value */
 		}
 
@@ -149,6 +149,9 @@ Buffer* b_addc(pBuffer const pBD, char symbol)
 	}
 
 	if (pBD->mode == -1) {
+		if (pBD->capacity == SHRT_MAX - 1) { /*If buffer has already reached max cap return nulll*/
+			return NULL;
+		}
 		available_space = (SHRT_MAX - 1) - pBD->capacity;
 		new_inc = (available_space * (short)(unsigned char)pBD->inc_factor) / 100;
 		new_cap = pBD->capacity + new_inc;
@@ -182,7 +185,7 @@ Buffer* b_addc(pBuffer const pBD, char symbol)
 * Purpose:			Clears the buffer
 * Author:			Andrew Palmer
 * History/Versions:	29/9/2019
-* Called Function:
+* Called Function:	
 * Parameters:		pBD				-A pointer to an existing buffer
 * Return Value:		int				0
 *
@@ -212,7 +215,7 @@ int b_clear(Buffer* const pBD)
 * Parameters:		pBD				-A pointer to an existing buffer
 * Return Value:		
 *
-* Algorithm:		
+* Algorithm:		Frees memory 
 **********************************************************************************************************/
 void b_free(Buffer* const pBD) {
 	if (pBD != NULL) {
@@ -237,10 +240,10 @@ int b_isFull(Buffer* const pBD) {
 	}
 
 	if (pBD->addc_offset == pBD->capacity) {
-		return 1;
+		return TRUE;
 	}
 
-	return 0;
+	return FALSE;
 }
 
 /**********************************************************************************************************
@@ -259,7 +262,7 @@ short b_limit(Buffer* const pBD) {
 		return RT_FAIL_1;
 	}
 
-	return pBD->addc_offset;
+	return pBD->addc_offset - 1;
 }
 
 /**********************************************************************************************************
@@ -296,9 +299,8 @@ short b_mark(pBuffer const pBD, short mark) {
 		return RT_FAIL_1;
 	}
 
-	if (0 <= mark || mark <= pBD->addc_offset)
-	{
-		pBD->markc_offset = mark;
+	if (0 <= mark || mark <= pBD->addc_offset) { /* Verify mark within range */
+		pBD->markc_offset = mark; /* Set markc_offset to mark */
 		return pBD->markc_offset;
 	}
 	else {
@@ -336,7 +338,7 @@ int b_mode(Buffer* const pBD) {
 **********************************************************************************************************/
 size_t b_incfactor(Buffer* const pBD) {
 	if (pBD == NULL) {
-		return 0x100;
+		return INCFACTOR_FAIL;
 	}
 
 	return (unsigned char)pBD->inc_factor;
@@ -346,7 +348,7 @@ size_t b_incfactor(Buffer* const pBD) {
 * Purpose:			Gets the content of the given file pointer and loads it into the buffer
 * Author:			Andrew Palmer
 * History/Versions:	29/9/2019
-* Called Function:
+* Called Function:	fgetc(), b_addc(), ungetc(), feof()
 * Parameters:		fi				-A pointer to a given file
 					pBD				-A pointer to an existing buffer
 * Return Value:		int				The number of characterrs loaded 
@@ -452,7 +454,7 @@ int b_eob(Buffer* const pBD)
 * Purpose:			Prints the buffer
 * Author:			Andrew Palmer
 * History/Versions:	29/9/2019
-* Called Function:
+* Called Function:	getc(), b_getc(), b_eob(), printf()
 * Parameters:		pBD				-A pointer to an existing buffer
 					nl				new line flag
 * Return Value:		int				how many characters were printed
@@ -464,18 +466,18 @@ int b_print(Buffer* const pBD, char nl) {
 		return RT_FAIL_1;
 	}
 
-	int counter = 0;
-	char c;
+	int counter = 0;	/*counter for the number of characters printed*/
+	char c;				/* the placeholder for the current char */
 
 	do {
-		c = b_getc(pBD);
-		if (b_eob(pBD)) break;
+		c = b_getc(pBD);		/* Gets the current char from the buffer */
+		if (b_eob(pBD)) break;	/* If end of buffer end printing */
 		printf("%c", c);
 		counter++;
 	} while (!b_eob(pBD));
 
 	if (nl != 0) {
-		printf("\n");
+		printf("\n");			/* Check for new line */
 	}
 	return counter;
 }
@@ -484,7 +486,7 @@ int b_print(Buffer* const pBD, char nl) {
 * Purpose:			Clears the buffer
 * Author:			Andrew Palmer
 * History/Versions:	29/9/2019
-* Called Function:
+* Called Function:	realloc()
 * Parameters:		pBD				-A pointer to an existing buffer
 					symbol			-Char to at at end
 * Return Value:		pBD				Pointer to the updated buffer
@@ -498,7 +500,7 @@ Buffer* b_compact(Buffer* const pBD, char symbol) {
 	short new_cap; /* The new capacity */
 
 	new_cap = pBD->addc_offset + 1;
-	if (new_cap < 0) { /*Compact can reach current max plus 1 (SHRT_MAX) so anything above that would cause overflow*/
+	if (new_cap < 0) { /*Compact can reach current max plus 1 (SHRT_MAX). Anything above that would cause overflow annnd be negative*/
 		return NULL;
 	}
 
